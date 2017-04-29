@@ -3,89 +3,76 @@ package main
 import (
 	"math/rand"
 
-	"math"
-
 	"time"
 
-	"github.com/faiface/pixel"
-	"github.com/faiface/pixel/imdraw"
-	"github.com/faiface/pixel/pixelgl"
-	"golang.org/x/image/colornames"
+	"image"
+
+	"image/color"
+	"image/png"
+	"os"
 )
 
 var dimX int = 1024
 var dimY int = 786
-var a pixel.Vec
-var b pixel.Vec
-var c pixel.Vec
-var startingPoints = map[int]*pixel.Vec{
+
+type point struct {
+	X int
+	Y int
+}
+
+var a point
+var b point
+var c point
+
+var startingPoints = map[int]*point{
 	0: &a,
 	1: &b,
 	2: &c,
 }
-var r float64 = 1
-var t float64 = 6
-var current pixel.Vec
 
-var imd *imdraw.IMDraw
+var current point
+var img *image.RGBA
 
 func init() {
-	imd = imdraw.New(nil)
+	img = image.NewRGBA(image.Rect(0, 0, dimX, dimY))
 
-	imd.Color(pixel.RGB(0.2, 0.2, 0.2))
-	imd.Push(a)
-	imd.Push(b)
-	imd.Push(c)
-	imd.Circle(r, t)
-	imd.Color(pixel.RGB(0.1, 0.1, 0.9))
+	for x := 0; x < dimX; x++ {
+		for y := 0; y < dimY; y++ {
+			img.Set(x, y, color.RGBA{0, 0, 0, 255})
+		}
+	}
 
 	rand.Seed(int64(time.Now().Nanosecond()))
-	a = pixel.V(float64(rand.Int63()%1024), float64(rand.Int63()%768))
-	b = pixel.V(float64(rand.Int63()%1024), float64(rand.Int63()%768))
-	c = pixel.V(float64(rand.Int63()%1024), float64(rand.Int63()%768))
-	current = pixel.V(float64(rand.Int63()%1024), float64(rand.Int63()%768))
+	a = point{int(rand.Int63() % 1024), int(rand.Int63() % 768)}
+	b = point{int(rand.Int63() % 1024), int(rand.Int63() % 768)}
+	c = point{int(rand.Int63() % 1024), int(rand.Int63() % 768)}
+
+	current = point{int(rand.Int63() % 1024), int(rand.Int63() % 768)}
 }
 
-func run() {
-	cfg := pixelgl.WindowConfig{
-		Title:  "Chaos Game",
-		Bounds: pixel.R(0, 0, float64(dimX), float64(dimY)),
-		VSync:  true,
-	}
-
-	win, err := pixelgl.NewWindow(cfg)
-	if err != nil {
-		panic(err)
-	}
-
-	for !win.Closed() {
-		win.Clear(colornames.Black)
-		imd.Draw(win)
-		win.Update()
-	}
-}
-
-func addPoint(imd *imdraw.IMDraw) {
+func addPoint() {
 	ch := rand.Int() % 3
 	targetPoint := startingPoints[ch]
 
-	newX := math.Abs(current.X()+targetPoint.X()) / 2
-	newY := math.Abs(current.Y()+targetPoint.Y()) / 2
+	newX := (current.X + targetPoint.X) / 2
+	newY := (current.Y + targetPoint.Y) / 2
 
-	current = pixel.V(newX, newY)
+	current = point{newX, newY}
 
-	imd.Push(current)
-	imd.Circle(r, t/4)
+	img.Set(current.X, current.Y, color.RGBA{110, 110, 255, 255})
 }
 
 func main() {
 	i := 0
 	for {
-		addPoint(imd)
+		addPoint()
 		i++
-		if i == 5000 {
+		if i == 100000 {
 			break
 		}
 	}
-	pixelgl.Run(run)
+
+	f, _ := os.OpenFile("out.png", os.O_WRONLY|os.O_CREATE, 0600)
+	defer f.Close()
+	png.Encode(f, img)
 }
